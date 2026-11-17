@@ -42,12 +42,11 @@ def _(mo):
 
     - **Uniform:** every value between 0 and 1 is equally likely, so its plot is flat. It's the easy case.
     - **Exponential:** the waiting time until something happens. Mostly small values, with a long tail to the right.
-    - **Lognormal:** values that come from multiplying many random factors, like incomes, or money that grows or shrinks by a random percentage each year. Mostly modest, with rare huge outliers.
     - **Two humps:** a mix of two groups, so there are two peaks. It looks weird, but it's symmetric, so its averages turn normal quickly.
     - **Binomial:** how many successes you get in a fixed number of yes/no tries. Here, how many of 10 visitors buy, when each buys with a 10% chance.
     - **Poisson:** how many rare events happen in a fixed window. Here, emails in an hour, when 2 arrive per hour on average. It's the flip side of *exponential*: for events arriving at random, exponential is the gap between them, and Poisson is the count in a window.
 
-    The more lopsided the distribution, the bigger $n$ has to be before its averages look normal. Lognormal needs the biggest $n$, and uniform the smallest.
+    The more lopsided the distribution, the bigger $n$ has to be before its averages look normal. Exponential needs the biggest $n$, and uniform the smallest.
     """)
     return
 
@@ -69,7 +68,7 @@ def _(averages, dist, n, np, plt, sims, zoom):
     def _histogram(ax, values, step, color, xlim, label=None):
         """Density histogram. Discrete values sit on multiples of `step`, so center one bar on each."""
         if step is None:
-            # 50 bars across the on-screen part of the data, so a long tail (lognormal) doesn't make them coarse.
+            # 50 bars across the on-screen part of the data, so a long tail doesn't make them coarse.
             # Weights keep the heights a true density even though off-screen values are left out.
             bins = np.linspace(max(values.min(), xlim[0]), min(values.max(), xlim[1]), 51)
             weights = np.full(len(values), 1 / (len(values) * (bins[1] - bins[0])))
@@ -88,7 +87,7 @@ def _(averages, dist, n, np, plt, sims, zoom):
         _left.bar(_k, dist["density"](_k), width=1, color="#bdbdbd", edgecolor="white", linewidth=1)
     else:
         _xs = np.linspace(*dist["xlim"], 500)
-        with np.errstate(divide="ignore", invalid="ignore"):  # e.g. lognormal at x = 0
+        with np.errstate(divide="ignore", invalid="ignore"):  # in case a density divides by x at x = 0
             _pdf = np.nan_to_num(dist["density"](_xs))
         _left.fill_between(_xs, _pdf, color="#bdbdbd", linewidth=0)
     _left.set_title(f"Original distribution: {dist['label']}")
@@ -146,7 +145,6 @@ def _(mo):
 
     - *Exponential*: slide $n$ from 1 up to 30.
     - *Two humps*: two peaks, and the averages still form one bell. (At $n = 2$, count the humps.)
-    - *Lognormal*: still visibly lopsided at $n = 30$, so "30 is enough" is only a rule of thumb.
     - *Binomial* or *poisson* at $n = 1$: lopsided, discrete bars that still smooth into a bell.
 
     Once the averages get narrow, flip on **Zoom in on the averages** to see their shape up close.
@@ -201,11 +199,6 @@ def _(math, np):
             label="Exponential(λ = 1)", mean=1, var=1, discrete=False, xlim=(0, 6),
             sample=lambda rng, size: rng.exponential(1, size),
             density=lambda x: np.exp(-x),
-        ),
-        "lognormal": dict(
-            label="Lognormal(0, 1)", mean=np.exp(1 / 2), var=(np.e - 1) * np.e, discrete=False, xlim=(0, 8),
-            sample=lambda rng, size: rng.lognormal(0, 1, size),
-            density=lambda x: np.exp(-np.log(x) ** 2 / 2) / (x * np.sqrt(2 * np.pi)),
         ),
         "two humps": dict(  # half the draws near -2, half near +2, each with standard deviation 0.5
             label="Two humps (peaks at ±2)", mean=0, var=4.25, discrete=False, xlim=(-4, 4),
