@@ -10,9 +10,6 @@ dependencies = [
     "marimo",
     "matplotlib==3.10.8",
     "numpy==2.4.3",
-    "plotly==5.18.0",
-    "scipy==1.17.1",
-    "wigglystuff==0.2.37",
 ]
 
 [tool.uv]
