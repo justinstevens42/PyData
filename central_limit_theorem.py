@@ -36,6 +36,23 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### The distributions, in brief
+
+    - **Uniform:** every value between 0 and 1 is equally likely, so its plot is flat. It's the easy case.
+    - **Exponential:** the waiting time until something happens. Mostly small values, with a long tail to the right.
+    - **Lognormal:** values that come from multiplying many random factors, like incomes, or money that grows or shrinks by a random percentage each year. Mostly modest, with rare huge outliers.
+    - **Two humps:** a mix of two groups, so there are two peaks. It looks weird, but it's symmetric, so its averages turn normal quickly.
+    - **Binomial:** how many successes you get in a fixed number of yes/no tries. Here, how many of 10 visitors buy, when each buys with a 10% chance.
+    - **Poisson:** how many rare events happen in a fixed window. Here, emails in an hour, when 2 arrive per hour on average. It's the flip side of *exponential*: for events arriving at random, exponential is the gap between them, and Poisson is the count in a window.
+
+    The more lopsided the distribution, the bigger $n$ has to be before its averages look normal. Lognormal needs the biggest $n$, and uniform the smallest.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
 def _(DISTRIBUTIONS, mo):
     distribution = mo.ui.dropdown(options=list(DISTRIBUTIONS), value="uniform", label="Distribution")
     sample_size = mo.ui.slider(start=1, stop=100, step=1, value=100, show_value=True, label="Sample size $n$")
