@@ -43,19 +43,23 @@ def _(DISTRIBUTIONS, mo):
 
 @app.cell(hide_code=True)
 def _(averages, dist, n, np, one_draw, plt, sims, zoom):
-    def _histogram(ax, values, step, color, label=None):
+    def _histogram(ax, values, step, color, xlim, label=None):
         """Density histogram. Discrete values sit on multiples of `step`, so center one bar on each."""
         if step is None:
-            bins = 50
+            # 50 bars across the on-screen part of the data, so a long tail (lognormal) doesn't make them coarse.
+            # Weights keep the heights a true density even though off-screen values are left out.
+            bins = np.linspace(max(values.min(), xlim[0]), min(values.max(), xlim[1]), 51)
+            weights = np.full(len(values), 1 / (len(values) * (bins[1] - bins[0])))
+            ax.hist(values, bins=bins, weights=weights, color=color, label=label)
         else:
             k = np.round(values / step)
             stride = max(1, int(np.ceil((k.max() - k.min() + 1) / 150)))  # at most ~150 bars
             bins = (np.arange(k.min(), k.max() + stride + 1, stride) - 0.5) * step
-        ax.hist(values, bins=bins, density=True, color=color, label=label)
+            ax.hist(values, bins=bins, density=True, color=color, label=label)
 
     _fig, (_left, _right) = plt.subplots(1, 2, figsize=(10, 3.6), layout="constrained")
 
-    _histogram(_left, one_draw, 1 if dist["discrete"] else None, "#bdbdbd")
+    _histogram(_left, one_draw, 1 if dist["discrete"] else None, "#bdbdbd", dist["xlim"])
     _left.set_title(f"One draw: {dist['label']}")
     _left.set_xlim(dist["xlim"])
 
@@ -66,7 +70,7 @@ def _(averages, dist, n, np, one_draw, plt, sims, zoom):
         _right_xlim = (max(dist["xlim"][0], dist["mean"] - 4 * _sd), min(dist["xlim"][1], dist["mean"] + 4 * _sd))
     _right.set_xlim(_right_xlim)
 
-    _histogram(_right, averages, 1 / n if dist["discrete"] else None, "#e9a3a3", label=f"{sims:,} simulated averages")
+    _histogram(_right, averages, 1 / n if dist["discrete"] else None, "#e9a3a3", _right_xlim, label=f"{sims:,} simulated averages")
     _x = np.linspace(*_right_xlim, 500)
     _normal = np.exp(-0.5 * ((_x - dist["mean"]) / _sd) ** 2) / (_sd * np.sqrt(2 * np.pi))
     _right.plot(_x, _normal, color="#333333", linestyle="--", linewidth=2, label=r"CLT prediction $\mathcal{N}(\mu, \sigma^2/n)$")
@@ -107,7 +111,14 @@ def _(mo):
     - **Center:** the averages stay centered on the mean $\mu$ (the gray line).
     - **Spread:** the averages narrow like $\sigma / \sqrt{n}$. Quadruple $n$, and the spread halves.
 
-    **Try this:** choose *exponential*, then slide $n$ from 1 up to 30. Then try *binomial* or *poisson*, starting at $n = 1$: lopsided, discrete bars that still smooth into a bell. Once the averages get narrow, flip on **Zoom in on the averages** to see their shape up close.
+    **Try this:**
+
+    - *Exponential*: slide $n$ from 1 up to 30.
+    - *Two humps*: two peaks, and the averages still form one bell. (At $n = 2$, count the humps.)
+    - *Lognormal*: still visibly lopsided at $n = 30$, so "30 is enough" is only a rule of thumb.
+    - *Binomial* or *poisson* at $n = 1$: lopsided, discrete bars that still smooth into a bell.
+
+    Once the averages get narrow, flip on **Zoom in on the averages** to see their shape up close.
 
     ## How it works
 
@@ -146,7 +157,7 @@ def _(mo):
 
 
 @app.cell
-def _():
+def _(np):
     DISTRIBUTIONS = {
         "uniform": dict(
             label="Uniform(0, 1)", mean=1 / 2, var=1 / 12, discrete=False, xlim=(0, 1),
@@ -155,6 +166,14 @@ def _():
         "exponential": dict(
             label="Exponential(λ = 1)", mean=1, var=1, discrete=False, xlim=(0, 6),
             sample=lambda rng, size: rng.exponential(1, size),
+        ),
+        "lognormal": dict(
+            label="Lognormal(0, 1)", mean=np.exp(1 / 2), var=(np.e - 1) * np.e, discrete=False, xlim=(0, 8),
+            sample=lambda rng, size: rng.lognormal(0, 1, size),
+        ),
+        "two humps": dict(  # half the draws near -2, half near +2
+            label="Two humps (peaks at ±2)", mean=0, var=4.25, discrete=False, xlim=(-4, 4),
+            sample=lambda rng, size: rng.normal(rng.choice([-2.0, 2.0], size=size), 0.5),
         ),
         "binomial": dict(
             label="Binomial(10, 0.1)", mean=1, var=0.9, discrete=True, xlim=(-0.5, 5.5),
