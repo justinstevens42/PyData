@@ -24,7 +24,7 @@ def _(mo):
 
     **How the explorer works:**
 
-    1. Draw $n$ values from the distribution you pick. (The left plot shows what single draws look like.)
+    1. Draw $n$ values from the distribution you pick. (The left plot shows that distribution.)
     2. Compute their mean.
     3. Repeat steps 1 and 2 *Simulations* times, and plot all of those means as a histogram (the right plot).
 
@@ -48,7 +48,7 @@ def _(DISTRIBUTIONS, mo):
 
 
 @app.cell(hide_code=True)
-def _(averages, dist, n, np, one_draw, plt, sims, zoom):
+def _(averages, dist, n, np, plt, sims, zoom):
     def _histogram(ax, values, step, color, xlim, label=None):
         """Density histogram. Discrete values sit on multiples of `step`, so center one bar on each."""
         if step is None:
@@ -65,8 +65,16 @@ def _(averages, dist, n, np, one_draw, plt, sims, zoom):
 
     _fig, (_left, _right) = plt.subplots(1, 2, figsize=(10, 3.6), layout="constrained")
 
-    _histogram(_left, one_draw, 1 if dist["discrete"] else None, "#bdbdbd", dist["xlim"])
-    _left.set_title(f"One draw: {dist['label']}")
+    # Left: the exact distribution (not a sample), so it only changes when you pick another one
+    if dist["discrete"]:
+        _k = np.arange(int(np.ceil(dist["xlim"][0])), int(np.floor(dist["xlim"][1])) + 1)
+        _left.bar(_k, dist["density"](_k), width=1, color="#bdbdbd", edgecolor="white", linewidth=1)
+    else:
+        _xs = np.linspace(*dist["xlim"], 500)
+        with np.errstate(divide="ignore", invalid="ignore"):  # e.g. lognormal at x = 0
+            _pdf = np.nan_to_num(dist["density"](_xs))
+        _left.fill_between(_xs, _pdf, color="#bdbdbd", linewidth=0)
+    _left.set_title(f"Original distribution: {dist['label']}")
     _left.set_xlim(dist["xlim"])
 
     # Same x-axis as the left plot, so you can see the averages narrow; or zoom to the CLT's mean ± 4 sd
@@ -140,9 +148,8 @@ def _(DISTRIBUTIONS, distribution, np, resample, sample_size, simulations):
     n, sims = sample_size.value, simulations.value
 
     rng = np.random.default_rng()
-    one_draw = dist["sample"](rng, sims)  # single draws, for the left plot
     averages = dist["sample"](rng, (sims, n)).mean(axis=1)  # each row: n draws, averaged
-    return averages, dist, n, one_draw, sims
+    return averages, dist, n, sims
 
 
 @app.cell(hide_code=True)
@@ -150,12 +157,13 @@ def _(mo):
     mo.md(r"""
     ## Add your own distribution
 
-    Each entry says how to draw samples, plus its mean and variance (for the CLT's prediction). Add one below, and it appears in the dropdown. For example, a die roll:
+    Each entry says how to draw samples (`sample`), what the distribution looks like for the left plot (`density`: the probability density, or for a discrete distribution, the probability of each whole number), and its mean and variance for the CLT's prediction. Add one below, and it appears in the dropdown. For example, a die roll:
 
     ```python
     "die roll": dict(
         label="Die roll", mean=3.5, var=35 / 12, discrete=True, xlim=(0.5, 6.5),
         sample=lambda rng, size: rng.integers(1, 7, size),
+        density=lambda k: np.full(len(k), 1 / 6),
     ),
     ```
     """)
@@ -163,31 +171,39 @@ def _(mo):
 
 
 @app.cell
-def _(np):
+def _(math, np):
+    # density: the probability density at x for continuous distributions; for discrete ones,
+    # the probability of each whole number k
     DISTRIBUTIONS = {
         "uniform": dict(
             label="Uniform(0, 1)", mean=1 / 2, var=1 / 12, discrete=False, xlim=(0, 1),
             sample=lambda rng, size: rng.uniform(0, 1, size),
+            density=lambda x: np.where((x >= 0) & (x <= 1), 1.0, 0.0),
         ),
         "exponential": dict(
             label="Exponential(λ = 1)", mean=1, var=1, discrete=False, xlim=(0, 6),
             sample=lambda rng, size: rng.exponential(1, size),
+            density=lambda x: np.exp(-x),
         ),
         "lognormal": dict(
             label="Lognormal(0, 1)", mean=np.exp(1 / 2), var=(np.e - 1) * np.e, discrete=False, xlim=(0, 8),
             sample=lambda rng, size: rng.lognormal(0, 1, size),
+            density=lambda x: np.exp(-np.log(x) ** 2 / 2) / (x * np.sqrt(2 * np.pi)),
         ),
-        "two humps": dict(  # half the draws near -2, half near +2
+        "two humps": dict(  # half the draws near -2, half near +2, each with standard deviation 0.5
             label="Two humps (peaks at ±2)", mean=0, var=4.25, discrete=False, xlim=(-4, 4),
             sample=lambda rng, size: rng.normal(rng.choice([-2.0, 2.0], size=size), 0.5),
+            density=lambda x: (np.exp(-2 * (x + 2) ** 2) + np.exp(-2 * (x - 2) ** 2)) / np.sqrt(2 * np.pi),
         ),
         "binomial": dict(
             label="Binomial(10, 0.1)", mean=1, var=0.9, discrete=True, xlim=(-0.5, 5.5),
             sample=lambda rng, size: rng.binomial(10, 0.1, size),
+            density=lambda k: np.array([math.comb(10, int(i)) for i in k]) * 0.1**k * 0.9 ** (10 - k),
         ),
         "poisson": dict(
             label="Poisson(λ = 2)", mean=2, var=2, discrete=True, xlim=(-0.5, 8.5),
             sample=lambda rng, size: rng.poisson(2, size),
+            density=lambda k: np.exp(-2) * 2.0**k / np.array([math.factorial(int(i)) for i in k]),
         ),
     }
     return (DISTRIBUTIONS,)
@@ -195,10 +211,12 @@ def _(np):
 
 @app.cell
 def _():
+    import math
+
     import marimo as mo
     import matplotlib.pyplot as plt
     import numpy as np
-    return mo, np, plt
+    return math, mo, np, plt
 
 
 @app.cell(hide_code=True)
