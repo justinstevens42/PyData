@@ -1,0 +1,20 @@
+[project]
+name = "pydata-san-diego"
+version = "0.1.0"
+description = "Central Limit Theorem notebook for the marimo intro at the PyData San Diego meetup."
+readme = "README.md"
+requires-python = ">=3.11"
+# Same pins as the notebook's own `# /// script` header, so `uv run marimo edit`
+# and `uvx marimo edit --sandbox` install the same packages.
+dependencies = [
+    "marimo",
+    "matplotlib==3.10.8",
+    "numpy==2.4.3",
+    "plotly==5.18.0",
+    "scipy==1.17.1",
+    "wigglystuff==0.2.37",
+]
+
+[tool.uv]
+# A notebook, not an installable package.
+package = false
