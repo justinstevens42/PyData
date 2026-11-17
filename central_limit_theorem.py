@@ -22,9 +22,15 @@ def _(mo):
 
     $$\overline{X} = \frac{X_1 + \cdots + X_n}{n} \approx \mathcal{N}\left(\mu, \frac{\sigma^2}{n}\right).$$
 
-    **Start with the question from the talk:** add up 100 random numbers, each Uniform(0, 1). What does the total look like? The explorer starts there, at *uniform* with $n = 100$. (The total is just $100 \times$ the average, so it has the same shape.)
+    **How the explorer works:**
 
-    Then pick another distribution and drag the slider. The plots update as you go.
+    1. Draw $n$ values from the distribution you pick. (The left plot shows what single draws look like.)
+    2. Compute their mean.
+    3. Repeat steps 1 and 2 *Simulations* times, and plot all of those means as a histogram (the right plot).
+
+    The CLT predicts the shape of that histogram: the dashed bell curve $\mathcal{N}(\mu, \sigma^2/n)$. A bigger $n$ is what makes the means bell-shaped and narrower; more simulations only make the histogram smoother.
+
+    Add up 100 random numbers, each Uniform(0, 1). What does the total look like? The explorer starts there, at *uniform* with $n = 100$. (The total is just $100 \times$ the mean, so it has the same shape.) Then pick another distribution and drag the slider. The plots update as you go.
     """)
     return
 
@@ -122,7 +128,7 @@ def _(mo):
 
     ## How it works
 
-    Each simulation draws $n$ numbers and averages them; this is all the code there is. marimo is reactive: when you change a control above, this cell reruns, and so does every cell that uses its results.
+    The cell below is the whole simulation. It draws a grid of values with *Simulations* rows and $n$ columns, so each row is one sample of $n$ draws, then takes the mean of each row. marimo is reactive: when you change a control above, this cell reruns, and so does every cell that uses its results.
     """)
     return
 
